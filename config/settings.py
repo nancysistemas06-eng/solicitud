@@ -25,15 +25,12 @@ SECRET_KEY = os.environ.get(
     "SECRET_KEY",
     "clave-solo-para-desarrollo-local"
 )
-
-DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.environ.get(
-        "ALLOWED_HOSTS", "127.0.0.1,localhost"
-    ).split(",")
-    if host.strip()
+    "solicitud1.vercel.app",
+    "localhost",
+    "127.0.0.1",
 ]
 
 # Agregar automáticamente el dominio asignado por Render.
