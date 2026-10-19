@@ -1,4 +1,5 @@
 
+
 """
 Django settings for config project.
 """
@@ -7,17 +8,12 @@ from pathlib import Path
 import os
 import dj_database_url
 
-
-# ==========================================================
-# RUTAS DEL PROYECTO
-# ==========================================================
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# ==========================================================
-# SEGURIDAD Y CONFIGURACIÓN DEL SERVIDOR
-# ==========================================================
+# ==================================================
+# CONFIGURACIÓN GENERAL
+# ==================================================
 
 SECRET_KEY = os.environ.get(
     "SECRET_KEY",
@@ -27,7 +23,10 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 
-# Dominios permitidos para acceder al sistema
+# ==================================================
+# DOMINIOS PERMITIDOS
+# ==================================================
+
 ALLOWED_HOSTS = [
     "solicitud1.vercel.app",
     ".vercel.app",
@@ -35,32 +34,40 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
 ]
 
-# Compatibilidad adicional si existe un despliegue en Render
-if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
-    ALLOWED_HOSTS.append(
-        os.environ["RENDER_EXTERNAL_HOSTNAME"]
-    )
+# Compatibilidad adicional con Vercel
+vercel_url = os.environ.get("VERCEL_URL")
+
+if vercel_url:
+    ALLOWED_HOSTS.append(vercel_url)
 
 
-# Dominios autorizados para solicitudes protegidas por CSRF
+# ==================================================
+# ORÍGENES CONFIABLES PARA FORMULARIOS
+# ==================================================
+
 CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.environ.get(
-        "CSRF_TRUSTED_ORIGINS", ""
-    ).split(",")
-    if origin.strip()
+    "https://solicitud1.vercel.app",
 ]
 
-# Permite utilizar el dominio principal de Vercel
-if os.environ.get("VERCEL_URL"):
+if vercel_url:
     CSRF_TRUSTED_ORIGINS.append(
-        "https://" + os.environ["VERCEL_URL"]
+        f"https://{vercel_url}"
     )
 
+# Permitir otros orígenes HTTPS indicados en Vercel
+origenes_adicionales = os.environ.get(
+    "CSRF_TRUSTED_ORIGINS", ""
+)
 
-# ==========================================================
+for origen in origenes_adicionales.split(","):
+    origen = origen.strip()
+    if origen and origen not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(origen)
+
+
+# ==================================================
 # APLICACIONES
-# ==========================================================
+# ==================================================
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -74,9 +81,9 @@ INSTALLED_APPS = [
 ]
 
 
-# ==========================================================
+# ==================================================
 # MIDDLEWARE
-# ==========================================================
+# ==================================================
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -90,9 +97,9 @@ MIDDLEWARE = [
 ]
 
 
-# ==========================================================
-# URLS Y PLANTILLAS
-# ==========================================================
+# ==================================================
+# URLS Y APLICACIÓN
+# ==================================================
 
 ROOT_URLCONF = "config.urls"
 
@@ -114,23 +121,25 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 
-# ==========================================================
-# BASE DE DATOS
-# SQLite para desarrollo local.
-# PostgreSQL cuando DATABASE_URL esté configurada.
-# ==========================================================
+# ==================================================
+# BASE DE DATOS: NEON POSTGRESQL
+# ==================================================
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = (
+    os.environ.get("DATABASE_URL")
+    or os.environ.get("abkenosolicitud_DATABASE_URL")
+)
 
 if DATABASE_URL:
     DATABASES = {
-        "default": dj_database_url.config(
-            default=DATABASE_URL,
-            conn_max_age=600,
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=0,
             ssl_require=True,
         )
     }
 else:
+    # SQLite únicamente para desarrollo local
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -139,9 +148,9 @@ else:
     }
 
 
-# ==========================================================
+# ==================================================
 # VALIDACIÓN DE CONTRASEÑAS
-# ==========================================================
+# ==================================================
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -165,21 +174,15 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
             "django.contrib.auth.password_validation."
-            "CommonPasswordValidator"
-        ),
-    },
-    {
-        "NAME": (
-            "django.contrib.auth.password_validation."
             "NumericPasswordValidator"
         ),
     },
 ]
 
 
-# ==========================================================
-# IDIOMA, ZONA HORARIA Y FECHAS
-# ==========================================================
+# ==================================================
+# IDIOMA Y ZONA HORARIA
+# ==================================================
 
 LANGUAGE_CODE = "es-mx"
 
@@ -190,25 +193,25 @@ USE_I18N = True
 USE_TZ = True
 
 
-# ==========================================================
+# ==================================================
 # ARCHIVOS ESTÁTICOS
-# ==========================================================
+# ==================================================
 
 STATIC_URL = "/static/"
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
-# ==========================================================
-# CLAVE PRIMARIA PREDETERMINADA
-# ==========================================================
+# ==================================================
+# CONFIGURACIÓN DE MODELOS
+# ==================================================
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# ==========================================================
+# ==================================================
 # INICIO Y CIERRE DE SESIÓN
-# ==========================================================
+# ==================================================
 
 LOGIN_URL = "/accounts/login/"
 
