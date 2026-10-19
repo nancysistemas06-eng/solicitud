@@ -1,0 +1,72 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Control de Incidencias - Iniciar sesión</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .contenedor {
+            background: white;
+            width: 340px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px #0002;
+        }
+        h2 { text-align: center; color: #17365d; }
+        label { display: block; margin-top: 15px; }
+        input {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 10px;
+            margin-top: 6px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 22px;
+            background: #17365d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .error { color: #b42318; }
+    </style>
+</head>
+<body>
+    <div class="contenedor">
+        <h2>Control de Incidencias</h2>
+        <p>Ingresa con tu cuenta de sucursal.</p>
+
+        {% if form.errors %}
+            <p class="error">Usuario o contraseña incorrectos.</p>
+        {% endif %}
+
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+
+            <label for="id_username">Usuario</label>
+            <input type="text" name="username" id="id_username"
+                   autocomplete="username" required autofocus>
+
+            <label for="id_password">Contraseña</label>
+            <input type="password" name="password" id="id_password"
+                   autocomplete="current-password" required>
+
+            <input type="hidden" name="next" value="{{ next }}">
+
+            <button type="submit">Iniciar sesión</button>
+        </form>
+    </div>
+</body>
+</html>
