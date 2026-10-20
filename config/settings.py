@@ -1,87 +1,71 @@
 
-"""
-Django settings for config project.
-"""
-
-from pathlib import Path
 import os
+from pathlib import Path
+
 import dj_database_url
 
+
+# ==========================================================
+# RUTAS DEL PROYECTO
+# ==========================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# ==================================================
-# CONFIGURACIÓN GENERAL
-# ==================================================
+# ==========================================================
+# SEGURIDAD
+# ==========================================================
 
-SECRET_KEY = os.environ.get("SECRET_KEY")
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "clave-solo-para-desarrollo-local"
+)
 
-if not SECRET_KEY:
-    SECRET_KEY = "clave-solo-para-desarrollo-local"
-
-DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
-
-
-# ==================================================
-# DOMINIOS PERMITIDOS
-# ==================================================
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 
 ALLOWED_HOSTS = [
     "solicitud1.vercel.app",
+    "solicitud1-b5pnc4vmr-abkeno.vercel.app",
     ".vercel.app",
     "localhost",
     "127.0.0.1",
 ]
 
+# Agregar el dominio asignado por Vercel, si existe.
 vercel_url = os.environ.get("VERCEL_URL", "").strip()
 
 if vercel_url:
-    ALLOWED_HOSTS.append(vercel_url)
+    vercel_url = vercel_url.removeprefix("https://").removeprefix("http://").rstrip("/")
+    if vercel_url not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(vercel_url)
 
-
-# ==================================================
-# ORÍGENES CONFIABLES PARA FORMULARIOS (CSRF)
-# ==================================================
-
+# Orígenes autorizados para formularios POST y protección CSRF.
 CSRF_TRUSTED_ORIGINS = [
     "https://solicitud1.vercel.app",
+    "https://solicitud1-b5pnc4vmr-abkeno.vercel.app",
 ]
 
 if vercel_url:
-    CSRF_TRUSTED_ORIGINS.append(
-        f"https://{vercel_url}"
-        if not vercel_url.startswith("http")
-        else vercel_url
-    )
+    origin = f"https://{vercel_url}"
+    if origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(origin)
 
-origenes_adicionales = os.environ.get(
-    "CSRF_TRUSTED_ORIGINS", ""
-)
+# Permitir agregar más orígenes desde las variables de entorno.
+extra_csrf_origins = os.environ.get("CSRF_TRUSTED_ORIGINS", "")
 
-for origen in origenes_adicionales.split(","):
-    origen = origen.strip()
-    if origen and origen not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(origen)
+for origin in extra_csrf_origins.split(","):
+    origin = origin.strip().rstrip("/")
+    if origin and origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(origin)
 
 
-# ==================================================
-# COOKIES Y SEGURIDAD HTTPS
-# ==================================================
-
-CSRF_COOKIE_SECURE = not DEBUG
-SESSION_COOKIE_SECURE = not DEBUG
-
-CSRF_COOKIE_HTTPONLY = False
-SESSION_COOKIE_HTTPONLY = True
-
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = "DENY"
+# Vercel termina HTTPS en su proxy.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
-# ==================================================
+# ==========================================================
 # APLICACIONES
-# ==================================================
+# ==========================================================
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -90,13 +74,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
     "incidencias",
 ]
 
 
-# ==================================================
+# ==========================================================
 # MIDDLEWARE
-# ==================================================
+# ==========================================================
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -110,16 +95,23 @@ MIDDLEWARE = [
 ]
 
 
-# ==================================================
-# URLS Y APLICACIÓN
-# ==================================================
+# ==========================================================
+# URLS Y WSGI
+# ==========================================================
 
 ROOT_URLCONF = "config.urls"
+
+WSGI_APPLICATION = "config.wsgi.application"
+
+
+# ==========================================================
+# PLANTILLAS HTML
+# ==========================================================
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -131,18 +123,14 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "config.wsgi.application"
 
-
-# ==================================================
-# BASE DE DATOS: NEON POSTGRESQL
-# ==================================================
+# ==========================================================
+# BASE DE DATOS: NEON POSTGRESQL / SQLITE LOCAL
+# ==========================================================
 
 DATABASE_URL = (
-    os.environ.get("DATABASE_URL", "").strip()
-    or os.environ.get(
-        "abkenosolicitud_DATABASE_URL", ""
-    ).strip()
+    os.environ.get("DATABASE_URL")
+    or os.environ.get("abkenosolicitud_DATABASE_URL")
 )
 
 if DATABASE_URL:
@@ -154,9 +142,6 @@ if DATABASE_URL:
         )
     }
 else:
-    # SQLite solo para desarrollo local.
-    # En Vercel configura DATABASE_URL en las variables
-    # de entorno del proyecto.
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -165,9 +150,9 @@ else:
     }
 
 
-# ==================================================
+# ==========================================================
 # VALIDACIÓN DE CONTRASEÑAS
-# ==================================================
+# ==========================================================
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -191,21 +176,15 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
             "django.contrib.auth.password_validation."
-            "CommonPasswordValidator"
-        ),
-    },
-    {
-        "NAME": (
-            "django.contrib.auth.password_validation."
             "NumericPasswordValidator"
         ),
     },
 ]
 
 
-# ==================================================
+# ==========================================================
 # IDIOMA Y ZONA HORARIA
-# ==================================================
+# ==========================================================
 
 LANGUAGE_CODE = "es-mx"
 
@@ -216,39 +195,57 @@ USE_I18N = True
 USE_TZ = True
 
 
-# ==================================================
-# ARCHIVOS ESTÁTICOS
-# ==================================================
+# ==========================================================
+# ARCHIVOS ESTÁTICOS: CSS, JAVASCRIPT E IMÁGENES
+# ==========================================================
 
 STATIC_URL = "/static/"
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# WhiteNoise sirve los archivos estáticos en producción.
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
         "BACKEND": (
-            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+            "whitenoise.storage.CompressedStaticFilesStorage"
         ),
     },
 }
 
 
-# ==================================================
-# MODELOS
-# ==================================================
-
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-
-# ==================================================
-# INICIO Y CIERRE DE SESIÓN
-# ==================================================
+# ==========================================================
+# AUTENTICACIÓN
+# ==========================================================
 
 LOGIN_URL = "/accounts/login/"
 
 LOGIN_REDIRECT_URL = "/"
 
 LOGOUT_REDIRECT_URL = "/accounts/login/"
+
+
+# ==========================================================
+# SESIONES Y COOKIES
+# ==========================================================
+
+SESSION_COOKIE_SECURE = not DEBUG
+
+CSRF_COOKIE_SECURE = not DEBUG
+
+SESSION_COOKIE_HTTPONLY = True
+
+CSRF_COOKIE_HTTPONLY = False
+
+SESSION_COOKIE_SAMESITE = "Lax"
+
+CSRF_COOKIE_SAMESITE = "Lax"
+
+
+# ==========================================================
+# CONFIGURACIÓN GENERAL
+# ==========================================================
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
