@@ -1,5 +1,4 @@
 
-
 """
 Django settings for config project.
 """
@@ -8,6 +7,7 @@ from pathlib import Path
 import os
 import dj_database_url
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -15,10 +15,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # CONFIGURACIÓN GENERAL
 # ==================================================
 
-SECRET_KEY = os.environ.get(
-    "SECRET_KEY",
-    "clave-solo-para-desarrollo-local"
-)
+SECRET_KEY = os.environ.get("SECRET_KEY")
+
+if not SECRET_KEY:
+    SECRET_KEY = "clave-solo-para-desarrollo-local"
 
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
@@ -34,15 +34,14 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
 ]
 
-# Compatibilidad adicional con Vercel
-vercel_url = os.environ.get("VERCEL_URL")
+vercel_url = os.environ.get("VERCEL_URL", "").strip()
 
 if vercel_url:
     ALLOWED_HOSTS.append(vercel_url)
 
 
 # ==================================================
-# ORÍGENES CONFIABLES PARA FORMULARIOS
+# ORÍGENES CONFIABLES PARA FORMULARIOS (CSRF)
 # ==================================================
 
 CSRF_TRUSTED_ORIGINS = [
@@ -52,9 +51,10 @@ CSRF_TRUSTED_ORIGINS = [
 if vercel_url:
     CSRF_TRUSTED_ORIGINS.append(
         f"https://{vercel_url}"
+        if not vercel_url.startswith("http")
+        else vercel_url
     )
 
-# Permitir otros orígenes HTTPS indicados en Vercel
 origenes_adicionales = os.environ.get(
     "CSRF_TRUSTED_ORIGINS", ""
 )
@@ -63,6 +63,20 @@ for origen in origenes_adicionales.split(","):
     origen = origen.strip()
     if origen and origen not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(origen)
+
+
+# ==================================================
+# COOKIES Y SEGURIDAD HTTPS
+# ==================================================
+
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+
+CSRF_COOKIE_HTTPONLY = False
+SESSION_COOKIE_HTTPONLY = True
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
 
 
 # ==================================================
@@ -76,7 +90,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     "incidencias",
 ]
 
@@ -126,8 +139,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 # ==================================================
 
 DATABASE_URL = (
-    os.environ.get("DATABASE_URL")
-    or os.environ.get("abkenosolicitud_DATABASE_URL")
+    os.environ.get("DATABASE_URL", "").strip()
+    or os.environ.get(
+        "abkenosolicitud_DATABASE_URL", ""
+    ).strip()
 )
 
 if DATABASE_URL:
@@ -139,7 +154,9 @@ if DATABASE_URL:
         )
     }
 else:
-    # SQLite únicamente para desarrollo local
+    # SQLite solo para desarrollo local.
+    # En Vercel configura DATABASE_URL en las variables
+    # de entorno del proyecto.
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -163,6 +180,12 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": (
             "django.contrib.auth.password_validation."
             "MinimumLengthValidator"
+        ),
+    },
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "CommonPasswordValidator"
         ),
     },
     {
@@ -201,9 +224,20 @@ STATIC_URL = "/static/"
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
+    },
+}
+
 
 # ==================================================
-# CONFIGURACIÓN DE MODELOS
+# MODELOS
 # ==================================================
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
