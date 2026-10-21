@@ -1,4 +1,5 @@
 
+
 import os
 from pathlib import Path
 
@@ -18,28 +19,38 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get(
     "SECRET_KEY",
-    "clave-solo-para-desarrollo-local"
+    "clave-solo-para-desarrollo-local",
 )
 
-DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
+DEBUG = os.environ.get("DEBUG", "False").lower() in (
+    "true",
+    "1",
+    "yes",
+)
 
 ALLOWED_HOSTS = [
     "solicitud1.vercel.app",
-    "solicitud1-b5pnc4vmr-abkeno.vercel.app",
     ".vercel.app",
     "localhost",
     "127.0.0.1",
 ]
 
-# Agregar el dominio asignado por Vercel, si existe.
+# Agregar el dominio proporcionado por Vercel.
 vercel_url = os.environ.get("VERCEL_URL", "").strip()
+vercel_url = (
+    vercel_url.removeprefix("https://")
+    .removeprefix("http://")
+    .rstrip("/")
+)
 
-if vercel_url:
-    vercel_url = vercel_url.removeprefix("https://").removeprefix("http://").rstrip("/")
-    if vercel_url not in ALLOWED_HOSTS:
-        ALLOWED_HOSTS.append(vercel_url)
+if vercel_url and vercel_url not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(vercel_url)
 
-# Orígenes autorizados para formularios POST y protección CSRF.
+
+# ==========================================================
+# PROTECCIÓN CSRF
+# ==========================================================
+
 CSRF_TRUSTED_ORIGINS = [
     "https://solicitud1.vercel.app",
     "https://solicitud1-b5pnc4vmr-abkeno.vercel.app",
@@ -50,8 +61,10 @@ if vercel_url:
     if origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(origin)
 
-# Permitir agregar más orígenes desde las variables de entorno.
-extra_csrf_origins = os.environ.get("CSRF_TRUSTED_ORIGINS", "")
+# Permitir otros orígenes configurados en Vercel.
+extra_csrf_origins = os.environ.get(
+    "CSRF_TRUSTED_ORIGINS", ""
+)
 
 for origin in extra_csrf_origins.split(","):
     origin = origin.strip().rstrip("/")
@@ -59,8 +72,11 @@ for origin in extra_csrf_origins.split(","):
         CSRF_TRUSTED_ORIGINS.append(origin)
 
 
-# Vercel termina HTTPS en su proxy.
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Vercel recibe HTTPS y lo reenvía a la aplicación.
+SECURE_PROXY_SSL_HEADER = (
+    "HTTP_X_FORWARDED_PROTO",
+    "https",
+)
 
 
 # ==========================================================
@@ -74,7 +90,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     "incidencias",
 ]
 
@@ -105,7 +120,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # ==========================================================
-# PLANTILLAS HTML
+# PLANTILLAS
 # ==========================================================
 
 TEMPLATES = [
@@ -129,8 +144,10 @@ TEMPLATES = [
 # ==========================================================
 
 DATABASE_URL = (
-    os.environ.get("DATABASE_URL")
-    or os.environ.get("abkenosolicitud_DATABASE_URL")
+    os.environ.get("DATABASE_URL", "").strip()
+    or os.environ.get(
+        "abkenosolicitud_DATABASE_URL", ""
+    ).strip()
 )
 
 if DATABASE_URL:
@@ -196,21 +213,22 @@ USE_TZ = True
 
 
 # ==========================================================
-# ARCHIVOS ESTÁTICOS: CSS, JAVASCRIPT E IMÁGENES
+# ARCHIVOS ESTÁTICOS
 # ==========================================================
 
 STATIC_URL = "/static/"
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# WhiteNoise sirve los archivos estáticos en producción.
 STORAGES = {
     "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "BACKEND": (
+            "django.core.files.storage.FileSystemStorage"
+        ),
     },
     "staticfiles": {
         "BACKEND": (
-            "whitenoise.storage.CompressedStaticFilesStorage"
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
         ),
     },
 }
@@ -228,7 +246,7 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 
 # ==========================================================
-# SESIONES Y COOKIES
+# COOKIES Y SESIONES
 # ==========================================================
 
 SESSION_COOKIE_SECURE = not DEBUG
